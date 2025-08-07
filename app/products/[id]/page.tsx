@@ -7,6 +7,7 @@ import Link from "next/link";
 import Navbar from "../../components/Navbar";
 import { FaWhatsapp } from "react-icons/fa";
 import { useCart } from "@/app/context/CartContext";
+import Footer from "../../components/Footer";
 interface Product {
   _id: string;
   name: string;
@@ -15,6 +16,8 @@ interface Product {
   image: string;
   category: string;
   related: string[];
+  quantity: number;
+  discountPercent?: number;
 }
 
 export default function ProductPage() {
@@ -24,19 +27,46 @@ export default function ProductPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [quantity, setQuantity] = useState(1);
+  const [suggestedProducts, setSuggestedProducts] = useState<Product[]>([]);
+
   const { addToCart } = useCart();
 
   const handleAddToCart = () => {
     if (!product) return;
+
     addToCart({
       _id: product._id,
       name: product.name,
       price: product.price,
       image: product.image,
       quantity,
+      category: product.category,
     });
-    alert("Added to cart!");
   };
+
+  useEffect(() => {
+    if (!product) return;
+
+    const fetchSuggestions = async () => {
+      try {
+        const res = await axios.get(`http://localhost:5000/api/agarbatti`);
+        const allProducts: Product[] = res.data;
+
+        const others = allProducts
+          .filter(
+            (p) => p.category !== product.category && p._id !== product._id
+          )
+          .sort(() => 0.5 - Math.random())
+          .slice(0, 3);
+
+        setSuggestedProducts(others);
+      } catch (err) {
+        console.error("Suggestion fetch failed", err);
+      }
+    };
+
+    fetchSuggestions();
+  }, [product]);
 
   useEffect(() => {
     if (!productId) return;
@@ -58,7 +88,7 @@ export default function ProductPage() {
               p.category === currentProduct.category &&
               p._id !== currentProduct._id
           )
-          .slice(0, 3); // Get up to 3 related products
+          .slice(0, 3); 
 
         setRelatedProducts(related);
       } catch (err) {
@@ -107,12 +137,27 @@ export default function ProductPage() {
             </p>
 
             <div className="flex items-center gap-3 mt-2">
-              <span className="text-green-600 font-bold text-2xl">
-                ₹{product.price}
-              </span>
-              <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">
-                Best Seller
-              </span>
+              {product.discountPercent ? (
+                <>
+                  <span className="text-gray-500 line-through text-lg">
+                    ₹{product.price}
+                  </span>
+                  <span className="text-green-600 font-bold text-2xl">
+                    ₹
+                    {(
+                      product.price *
+                      (1 - product.discountPercent / 100)
+                    ).toFixed(0)}
+                  </span>
+                  <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
+                    -{product.discountPercent}%
+                  </span>
+                </>
+              ) : (
+                <span className="text-green-600 font-bold text-2xl">
+                  ₹{product.price}
+                </span>
+              )}
             </div>
 
             <p className="text-sm text-gray-500">
@@ -159,6 +204,33 @@ export default function ProductPage() {
           </div>
         </div>
 
+        <div className="mt-6 w-full bg-yellow-50 border border-yellow-200 rounded-xl shadow-lg p-4 animate-fade-in">
+          <h3 className="text-lg font-bold text-gray-800 mb-3">
+            You may also like to try:
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {suggestedProducts.map((p) => (
+              <Link
+                key={p._id}
+                href={`/products/${p._id}`}
+                className="bg-white rounded-lg shadow hover:shadow-md transition p-3 flex flex-col items-center text-center"
+              >
+                <img
+                  src={p.image}
+                  alt={p.name}
+                  className="w-24 h-24 object-cover rounded"
+                />
+                <div className="mt-2">
+                  <p className="text-sm font-medium text-gray-700">{p.name}</p>
+                  <p className="text-red-600 font-bold text-sm mt-1">
+                    ₹{p.price}
+                  </p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-16">
@@ -189,6 +261,7 @@ export default function ProductPage() {
           </div>
         )}
       </div>
+      <Footer></Footer>
     </div>
   );
 }

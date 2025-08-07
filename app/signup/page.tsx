@@ -26,14 +26,16 @@ const SignUpPage = () => {
   // Validation functions
   const validateFirstName = (value: string) => {
     if (!value) setFirstNameError("First name is required.");
-    else if (!/^[A-Za-z]+$/.test(value)) setFirstNameError("Only letters allowed.");
+    else if (!/^[A-Za-z]+$/.test(value))
+      setFirstNameError("Only letters allowed.");
     else setFirstNameError("");
     setFirstName(value);
   };
 
   const validateLastName = (value: string) => {
     if (!value) setLastNameError("Last name is required.");
-    else if (!/^[A-Za-z]+$/.test(value)) setLastNameError("Only letters allowed.");
+    else if (!/^[A-Za-z]+$/.test(value))
+      setLastNameError("Only letters allowed.");
     else setLastNameError("");
     setLastName(value);
   };
@@ -54,57 +56,71 @@ const SignUpPage = () => {
   };
 
   const validatePassword = (value: string) => {
-    const strongRegex =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{12,}$/;
+    const strongRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{12,}$/;
 
     if (!value) setError("Password is required.");
     else if (!strongRegex.test(value))
-      setError("Password must be 12+ characters with A-Z, a-z, 0-9, and symbol.");
+      setError(
+        "Password must be 12+ characters with A-Z, a-z, 0-9, and symbol."
+      );
     else setError("");
     setPassword(value);
   };
 
-  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (
-      !firstNameError &&
-      !lastNameError &&
-      !emailError &&
-      !contactError &&
-      !error &&
-      firstName &&
-      lastName &&
-      email &&
-      contact &&
-      password
-    ) {
-      try {
-        // First, attempt signup
-        await api.post("/api/v1/auth/signup", {
-          name: `${firstName} ${lastName}`,
-          email,
-          password,
-        });
-        console.log("Signup successful");
-        
+const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  if (
+    !firstNameError &&
+    !lastNameError &&
+    !emailError &&
+    !contactError &&
+    !error &&
+    firstName &&
+    lastName &&
+    email &&
+    contact &&
+    password
+  ) {
+    try {
+      // 1. Sign up the user via auth API
+      await api.post("/api/v1/auth/signup", {
+        username: `${firstName} ${lastName}`,
+        email,
+        password,
+        phone: contact,
+        institute: "",
+      });
+
+      console.log("Signup successful");
+
+      // 2. Also register user in your /registered-users DB
+      await api.post("/api/registered-users", {
+        firstName,
+        lastName,
+        email,
+        contact,
+      });
+
+      toast.success("Account created successfully!");
+      router.push("/login");
+    } catch (err: any) {
+      if (err.response?.status === 400) {
+        toast.error(
+          err.response?.data?.error || "User already exists, please log in"
+        );
         router.push("/login");
-      } catch (err: any) {
-        if (err.response?.status === 400) {
-          toast.error(
-            err.response?.data?.error || "User already exists, please log in"
-          );
-          router.push("/login");
-        } else {
-          setError(err.response?.data?.error || "Failed to create account");
-          toast.error(err.response?.data?.error || "Failed to create account");
-        }
+      } else {
+        setError(err.response?.data?.error || "Failed to create account");
+        toast.error(err.response?.data?.error || "Failed to create account");
       }
-    } else {
-      toast.error(
-        "Please fix the errors and complete all fields before proceeding."
-      );
     }
-  };
+  } else {
+    toast.error(
+      "Please fix the errors and complete all fields before proceeding."
+    );
+  }
+};
+
 
   const handleOtpSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -137,7 +153,9 @@ const SignUpPage = () => {
         {/* Header */}
         <div className="bg-gradient-to-r from-[#d6a243] to-red-700  p-6 text-white text-center">
           <h1 className="text-3xl font-bold tracking-wider">
-            {step === 1 ? "Create Your Sacred Account" : "Verify Your Divine OTP"}
+            {step === 1
+              ? "Create Your Sacred Account"
+              : "Verify Your Divine OTP"}
           </h1>
           <p className="text-yellow-100 mt-1 text-sm italic">
             {step === 1
@@ -163,7 +181,9 @@ const SignUpPage = () => {
                     required
                   />
                   {firstNameError && (
-                    <p className="text-red-500 text-xs mt-1">{firstNameError}</p>
+                    <p className="text-red-500 text-xs mt-1">
+                      {firstNameError}
+                    </p>
                   )}
                 </div>
                 <div>
